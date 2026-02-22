@@ -15,6 +15,16 @@ function findBin(name) {
 const YTDLP  = findBin('yt-dlp') || 'yt-dlp'
 const FFMPEG = findBin('ffmpeg')  || null
 
+// ── YouTube cookies (bypass bot detection on server IPs) ──────────────────────
+const COOKIES_FILE = path.join(__dirname, 'yt-cookies.txt')
+let ytCookies = false
+if (process.env.YOUTUBE_COOKIES_B64) {
+  try {
+    fs.writeFileSync(COOKIES_FILE, Buffer.from(process.env.YOUTUBE_COOKIES_B64, 'base64').toString('utf8'))
+    ytCookies = true
+  } catch (e) { console.error('Failed to write YouTube cookies:', e.message) }
+}
+
 // ── Stripe (optional — configure via server/.env) ────────────────────────────
 let stripe = null
 if (process.env.STRIPE_SECRET_KEY) {
@@ -101,7 +111,7 @@ app.get('/api/info', async (req, res) => {
   // Slow path — yt-dlp
   const args = ['--flat-playlist', '-J']
   if (hasVideoId && !wantPlaylist) args.push('--no-playlist')
-  if (isYouTube) args.push('--extractor-args', 'youtube:player_client=tv_embedded,web')
+  if (isYouTube && ytCookies) args.push('--cookies', COOKIES_FILE)
   args.push(wantPlaylist ? url : singleUrl)
 
   const proc = spawn(YTDLP, args)
@@ -173,8 +183,8 @@ app.get('/api/download', (req, res) => {
   const args = [url, '-o', outputTemplate, '--newline']
   if (!playlist) args.push('--no-playlist')
 
-  if (isYouTubeDl) {
-    args.push('--extractor-args', 'youtube:player_client=tv_embedded,web')
+  if (isYouTubeDl && ytCookies) {
+    args.push('--cookies', COOKIES_FILE)
   }
 
   if (noWatermark === 'true' && isTikTok) {
@@ -346,6 +356,7 @@ app.listen(PORT, () => {
   console.log(`\n  Media Downloader  —  http://localhost:${PORT}`)
   console.log(`  yt-dlp  : ${YTDLP}`)
   console.log(`  ffmpeg  : ${FFMPEG || 'NOT FOUND'}`)
+  console.log(`  yt cookies: ${ytCookies ? 'loaded ✓' : 'NOT SET (YouTube may be blocked)'}`)
   console.log(`  stripe  : ${stripe ? 'configured' : 'not configured (see server/.env)'}`)
   console.log(`  pro keys: ${proKeys.size} stored\n`)
 })
