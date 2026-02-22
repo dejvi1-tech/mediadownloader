@@ -35,6 +35,13 @@ function looksLikeCookies(text) {
   return /\t\.?youtube\.com\t/i.test(normalized)
 }
 
+const YTDLP_PROXY = (() => {
+  const raw = process.env.YTDLP_PROXY
+  if (!raw) return null
+  const cleaned = stripWrappingQuotes(raw.trim())
+  return cleaned || null
+})()
+
 if (process.env.YOUTUBE_COOKIES_B64) {
   try {
     const raw = stripWrappingQuotes(process.env.YOUTUBE_COOKIES_B64.trim())
@@ -145,6 +152,7 @@ app.get('/api/info', async (req, res) => {
 
   // Slow path — yt-dlp
   const args = ['--flat-playlist', '-J']
+  if (YTDLP_PROXY) args.push('--proxy', YTDLP_PROXY)
   if (hasVideoId && !wantPlaylist) args.push('--no-playlist')
   if (isYouTube) {
     if (ytCookies) {
@@ -225,6 +233,7 @@ app.get('/api/download', (req, res) => {
 
   const isYouTubeDl = url.includes('youtube.com') || url.includes('youtu.be')
   const args = [url, '-o', outputTemplate, '--newline']
+  if (YTDLP_PROXY) args.push('--proxy', YTDLP_PROXY)
   if (!playlist) args.push('--no-playlist')
 
   if (isYouTubeDl) {
@@ -399,6 +408,7 @@ app.listen(PORT, () => {
   console.log(`\n  Media Downloader  —  http://localhost:${PORT}`)
   console.log(`  yt-dlp  : ${YTDLP}`)
   console.log(`  ffmpeg  : ${FFMPEG || 'NOT FOUND'}`)
+  console.log(`  yt proxy: ${YTDLP_PROXY ? 'configured' : 'NOT SET'}`)
   console.log(`  yt cookies: ${ytCookies ? 'loaded ✓' : 'NOT SET (YouTube may be blocked)'}`)
   console.log(`  stripe  : ${stripe ? 'configured' : 'not configured (see server/.env)'}`)
   console.log(`  pro keys: ${proKeys.size} stored\n`)
