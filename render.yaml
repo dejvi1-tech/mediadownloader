@@ -8,7 +8,7 @@ services:
       pip3 install -U yt-dlp
       apt-get install -y ffmpeg 2>/dev/null || true
       cd server && npm install
-      cd ../client && npm install && npm run build
+      cd ../client && npm install --include=dev && npm run build
     startCommand: node server/index.js
     envVars:
       - key: NODE_ENV
