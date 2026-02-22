@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output
+client/dist/
+
+# Environment variables (keep secrets out of git)
+.env
+server/.env
+
+# Downloads folder (temp files)
+downloads/
+
+# Pro keys (server-side runtime data)
+server/pro-keys.json
+
+# OS / editor
+.DS_Store
+.claude/
+*.log

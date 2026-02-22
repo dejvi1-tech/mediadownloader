@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: media-downloader
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: |
+      pip3 install -U yt-dlp
+      apt-get install -y ffmpeg 2>/dev/null || true
+      cd server && npm install
+      cd ../client && npm install && npm run build
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PRO_SECRET
+        generateValue: true
+      - key: APP_URL
+        value: https://media-downloader.onrender.com
+      # Set these in the Render dashboard:
+      # STRIPE_SECRET_KEY
+      # STRIPE_MONTHLY_PRICE_ID
+      # STRIPE_YEARLY_PRICE_ID
