@@ -116,7 +116,10 @@ app.get('/api/info', async (req, res) => {
   // Slow path — yt-dlp
   const args = ['--flat-playlist', '-J']
   if (hasVideoId && !wantPlaylist) args.push('--no-playlist')
-  if (isYouTube && ytCookies) args.push('--cookies', COOKIES_FILE)
+  if (isYouTube) {
+    args.push('--extractor-args', 'youtube:player_client=tv_embedded,ios,web')
+    if (ytCookies) args.push('--cookies', COOKIES_FILE)
+  }
   args.push(wantPlaylist ? url : singleUrl)
 
   const proc = spawn(YTDLP, args)
@@ -188,8 +191,9 @@ app.get('/api/download', (req, res) => {
   const args = [url, '-o', outputTemplate, '--newline']
   if (!playlist) args.push('--no-playlist')
 
-  if (isYouTubeDl && ytCookies) {
-    args.push('--cookies', COOKIES_FILE)
+  if (isYouTubeDl) {
+    args.push('--extractor-args', 'youtube:player_client=tv_embedded,ios,web')
+    if (ytCookies) args.push('--cookies', COOKIES_FILE)
   }
 
   if (noWatermark === 'true' && isTikTok) {
