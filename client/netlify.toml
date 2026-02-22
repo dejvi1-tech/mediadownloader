@@ -1,0 +1,9 @@
+[build]
+  command = "npm install --include=dev && npm run build"
+  publish = "dist"
+
+# SPA fallback — send all routes to index.html
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

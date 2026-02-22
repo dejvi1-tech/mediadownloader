@@ -198,6 +198,10 @@ const T = {
   },
 }
 
+// In production on Netlify, set VITE_API_URL to your Render backend URL.
+// In dev, leave it empty and Vite's proxy handles /api/* → localhost:3001
+const API = import.meta.env.VITE_API_URL || ''
+
 function useHistory() {
   const [items, setItems] = useState(() => {
     try { return JSON.parse(localStorage.getItem('ytdl_v2') || '[]') } catch { return [] }
@@ -290,7 +294,7 @@ export default function App() {
       window.history.replaceState({}, '', '/')
       const sessionId = params.get('session_id')
       if (sessionId) {
-        fetch('/api/verify-session', {
+        fetch(`${API}/api/verify-session`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId }),
         }).then(r => r.json()).then(d => {
@@ -308,7 +312,7 @@ export default function App() {
     try {
       const p = new URLSearchParams({ url: trimmed })
       if (forcePlaylist) p.set('forcePlaylist', 'true')
-      const r = await fetch(`/api/info?${p}`)
+      const r = await fetch(`${API}/api/info?${p}`)
       const d = await r.json()
       if (!r.ok) throw new Error(d.error || 'Failed')
       setInfo(d); setFilename(d.title || '')
@@ -340,7 +344,7 @@ export default function App() {
   const subscribe = async () => {
     setCheckoutLoading(true); setKeyErr('')
     try {
-      const r = await fetch('/api/checkout', {
+      const r = await fetch(`${API}/api/checkout`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan: pricingPlan }),
       })
@@ -356,7 +360,7 @@ export default function App() {
     if (!keyInput.trim()) return
     setKeyLoading(true); setKeyErr('')
     try {
-      const r = await fetch('/api/activate', {
+      const r = await fetch(`${API}/api/activate`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: keyInput.trim() }),
       })
@@ -380,7 +384,7 @@ export default function App() {
       isPlaylist: info.isPlaylist ? 'true' : 'false',
       noWatermark: (noWatermark && isTikTok && isPro) ? 'true' : 'false',
     })
-    const es = new EventSource(`/api/download?${p}`)
+    const es = new EventSource(`${API}/api/download?${p}`)
     esRef.current = es
     es.onmessage = e => {
       const d = JSON.parse(e.data)
@@ -403,7 +407,7 @@ export default function App() {
         showToast(info.isPlaylist
           ? (lang === 'de' ? 'Playlist heruntergeladen!' : 'Playlist downloaded!')
           : (lang === 'de' ? 'Download abgeschlossen!' : 'Download complete!'))
-        window.location.href = `/api/file/${d.fileId}`
+        window.location.href = `${API}/api/file/${d.fileId}`
         setTimeout(() => { resetDl(); setDlDone(true) }, 3000)
       } else if (d.type === 'error') {
         setDlErr(d.message); resetDl(); es.close()
