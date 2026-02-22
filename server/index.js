@@ -197,15 +197,9 @@ app.get('/api/download', (req, res) => {
     if (embedThumb === 'true' && FFMPEG) args.push('--embed-thumbnail')
   } else {
     const h = quality && quality !== 'best' ? `[height<=${quality}]` : ''
-    const fmt = [
-      `bestvideo[ext=mp4][vcodec^=avc1]${h}+bestaudio[ext=m4a]`,
-      `bestvideo[vcodec^=avc1]${h}+bestaudio[ext=m4a]`,
-      `bestvideo[ext=mp4][vcodec^=avc1]${h}+bestaudio`,
-      `bestvideo[vcodec^=avc1]${h}+bestaudio`,
-      `bestvideo${h}+bestaudio`,
-      `best[ext=mp4]${h ? '[height<=' + quality + ']' : ''}`,
-      'best[ext=mp4]', 'best',
-    ].join('/')
+    const fmt = h
+      ? `bestvideo${h}+bestaudio/best${h}/bestvideo+bestaudio/best`
+      : `bestvideo+bestaudio/best`
     args.push('-f', fmt, '--merge-output-format', 'mp4')
     if (FFMPEG) args.push('--postprocessor-args', 'merger:-c:v copy -c:a aac -movflags +faststart')
   }
