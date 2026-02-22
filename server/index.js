@@ -18,13 +18,43 @@ const FFMPEG = findBin('ffmpeg')  || null
 // ── YouTube cookies (bypass bot detection on server IPs) ──────────────────────
 const COOKIES_FILE = '/tmp/yt-cookies.txt'
 let ytCookies = false
+
+function stripWrappingQuotes(value) {
+  if (!value) return value
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) return value.slice(1, -1)
+  return value
+}
+
+function looksLikeCookies(text) {
+  if (!text) return false
+  const normalized = text.replace(/\r\n/g, '\n')
+  if (normalized.includes('# Netscape HTTP Cookie File')) return true
+  return /\t\.?youtube\.com\t/i.test(normalized)
+}
+
 if (process.env.YOUTUBE_COOKIES_B64) {
   try {
-    const decoded = Buffer.from(process.env.YOUTUBE_COOKIES_B64, 'base64').toString('utf8')
-    console.log(`  cookie decode: ${decoded.length} chars, starts with: ${decoded.slice(0,30).replace(/\n/g,'\\n')}`)
-    fs.writeFileSync(COOKIES_FILE, decoded)
-    ytCookies = true
-    console.log(`  cookie file written to ${COOKIES_FILE}`)
+    const raw = stripWrappingQuotes(process.env.YOUTUBE_COOKIES_B64.trim())
+    const compact = raw.replace(/\s+/g, '')
+    const urlSafe = compact.replace(/-/g, '+').replace(/_/g, '/')
+
+    const candidates = [
+      Buffer.from(compact, 'base64').toString('utf8'),
+      Buffer.from(urlSafe, 'base64').toString('utf8'),
+      raw, // fallback if user pasted raw cookie text by mistake
+    ]
+    const decoded = candidates.find(looksLikeCookies)
+
+    if (!decoded) {
+      console.error('  YOUTUBE_COOKIES_B64 is set but invalid. Expected Netscape cookies text (base64).')
+    } else {
+      fs.writeFileSync(COOKIES_FILE, decoded.endsWith('\n') ? decoded : `${decoded}\n`, { mode: 0o600 })
+      ytCookies = true
+      console.log(`  YouTube cookies loaded (${decoded.length} chars) -> ${COOKIES_FILE}`)
+    }
   } catch (e) { console.error('  Failed to write YouTube cookies:', e.message) }
 } else {
   console.log('  YOUTUBE_COOKIES_B64 env var not found')
@@ -117,8 +147,11 @@ app.get('/api/info', async (req, res) => {
   const args = ['--flat-playlist', '-J']
   if (hasVideoId && !wantPlaylist) args.push('--no-playlist')
   if (isYouTube) {
-    args.push('--extractor-args', 'youtube:player_client=tv_embedded,ios,web')
-    if (ytCookies) args.push('--cookies', COOKIES_FILE)
+    if (ytCookies) {
+      args.push('--cookies', COOKIES_FILE)
+    } else {
+      args.push('--extractor-args', 'youtube:player_client=tv_embedded,ios,web')
+    }
   }
   args.push(wantPlaylist ? url : singleUrl)
 
@@ -130,8 +163,11 @@ app.get('/api/info', async (req, res) => {
   proc.on('close', code => {
     if (code !== 0) {
       let msg = 'Failed to fetch info'
-      if (stderr.includes('Sign in') || stderr.includes('bot'))
-        msg = 'YouTube blocked this request. Try again in a moment or try a different video.'
+      if (stderr.includes('Sign in') || stderr.includes('bot')) {
+        msg = ytCookies
+          ? 'YouTube blocked this request even with cookies. Re-export fresh cookies and try again.'
+          : 'YouTube blocked this request. Server is missing valid YouTube cookies.'
+      }
       else if (stderr.includes('Private')) msg = 'This video is private'
       else if (stderr.includes('not a'))   msg = 'URL not recognized. Paste a valid video or audio link.'
       return res.status(500).json({ error: msg })
@@ -192,8 +228,11 @@ app.get('/api/download', (req, res) => {
   if (!playlist) args.push('--no-playlist')
 
   if (isYouTubeDl) {
-    args.push('--extractor-args', 'youtube:player_client=tv_embedded,ios,web')
-    if (ytCookies) args.push('--cookies', COOKIES_FILE)
+    if (ytCookies) {
+      args.push('--cookies', COOKIES_FILE)
+    } else {
+      args.push('--extractor-args', 'youtube:player_client=tv_embedded,ios,web')
+    }
   }
 
   if (noWatermark === 'true' && isTikTok) {
