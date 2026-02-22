@@ -101,6 +101,7 @@ app.get('/api/info', async (req, res) => {
   // Slow path — yt-dlp
   const args = ['--flat-playlist', '-J']
   if (hasVideoId && !wantPlaylist) args.push('--no-playlist')
+  if (isYouTube) args.push('--extractor-args', 'youtube:player_client=tv_embedded,web')
   args.push(wantPlaylist ? url : singleUrl)
 
   const proc = spawn(YTDLP, args)
@@ -111,7 +112,8 @@ app.get('/api/info', async (req, res) => {
   proc.on('close', code => {
     if (code !== 0) {
       let msg = 'Failed to fetch info'
-      if (stderr.includes('Sign in'))    msg = 'This video requires sign-in'
+      if (stderr.includes('Sign in') || stderr.includes('bot'))
+        msg = 'YouTube blocked this request. Try again in a moment or try a different video.'
       else if (stderr.includes('Private')) msg = 'This video is private'
       else if (stderr.includes('not a'))   msg = 'URL not recognized. Paste a valid video or audio link.'
       return res.status(500).json({ error: msg })
@@ -167,8 +169,13 @@ app.get('/api/download', (req, res) => {
     outputTemplate = path.join(DOWNLOADS_DIR, `${fileId}.%(ext)s`)
   }
 
+  const isYouTubeDl = url.includes('youtube.com') || url.includes('youtu.be')
   const args = [url, '-o', outputTemplate, '--newline']
   if (!playlist) args.push('--no-playlist')
+
+  if (isYouTubeDl) {
+    args.push('--extractor-args', 'youtube:player_client=tv_embedded,web')
+  }
 
   if (noWatermark === 'true' && isTikTok) {
     args.push('--extractor-args', 'tiktok:app_name=trill')
