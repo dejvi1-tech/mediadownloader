@@ -152,7 +152,7 @@ app.get('/api/info', async (req, res) => {
 
   // Slow path — yt-dlp
   const args = ['--flat-playlist', '-J']
-  if (YTDLP_PROXY) args.push('--proxy', YTDLP_PROXY)
+  if (isYouTube && YTDLP_PROXY) args.push('--proxy', YTDLP_PROXY)
   if (hasVideoId && !wantPlaylist) args.push('--no-playlist')
   if (isYouTube) {
     if (ytCookies) {
@@ -233,7 +233,7 @@ app.get('/api/download', (req, res) => {
 
   const isYouTubeDl = url.includes('youtube.com') || url.includes('youtu.be')
   const args = [url, '-o', outputTemplate, '--newline']
-  if (YTDLP_PROXY) args.push('--proxy', YTDLP_PROXY)
+  if (isYouTubeDl && YTDLP_PROXY) args.push('--proxy', YTDLP_PROXY)
   if (!playlist) args.push('--no-playlist')
 
   if (isYouTubeDl) {
@@ -254,9 +254,11 @@ app.get('/api/download', (req, res) => {
     if (embedThumb === 'true' && FFMPEG) args.push('--embed-thumbnail')
   } else {
     const h = quality && quality !== 'best' ? `[height<=${quality}]` : ''
-    const fmt = h
-      ? `bestvideo${h}+bestaudio/best${h}/bestvideo+bestaudio/best`
-      : `bestvideo+bestaudio/best`
+    // Prefer AVC/H.264 + M4A for QuickTime compatibility; keep broad fallbacks.
+    const fmt = `bestvideo[ext=mp4][vcodec^=avc1]${h}+bestaudio[ext=m4a]`
+      + `/bestvideo[ext=mp4]${h}+bestaudio`
+      + `/best[ext=mp4]${h}`
+      + `/best${h}`
     args.push('-f', fmt, '--merge-output-format', 'mp4')
     if (FFMPEG) args.push('--postprocessor-args', 'merger:-c:v copy -c:a aac -movflags +faststart')
   }
