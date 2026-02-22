@@ -202,6 +202,7 @@ app.get('/api/download', (req, res) => {
       `bestvideo[vcodec^=avc1]${h}+bestaudio[ext=m4a]`,
       `bestvideo[ext=mp4][vcodec^=avc1]${h}+bestaudio`,
       `bestvideo[vcodec^=avc1]${h}+bestaudio`,
+      `bestvideo${h}+bestaudio`,
       `best[ext=mp4]${h ? '[height<=' + quality + ']' : ''}`,
       'best[ext=mp4]', 'best',
     ].join('/')
