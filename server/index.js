@@ -16,13 +16,18 @@ const YTDLP  = findBin('yt-dlp') || 'yt-dlp'
 const FFMPEG = findBin('ffmpeg')  || null
 
 // ── YouTube cookies (bypass bot detection on server IPs) ──────────────────────
-const COOKIES_FILE = path.join(__dirname, 'yt-cookies.txt')
+const COOKIES_FILE = '/tmp/yt-cookies.txt'
 let ytCookies = false
 if (process.env.YOUTUBE_COOKIES_B64) {
   try {
-    fs.writeFileSync(COOKIES_FILE, Buffer.from(process.env.YOUTUBE_COOKIES_B64, 'base64').toString('utf8'))
+    const decoded = Buffer.from(process.env.YOUTUBE_COOKIES_B64, 'base64').toString('utf8')
+    console.log(`  cookie decode: ${decoded.length} chars, starts with: ${decoded.slice(0,30).replace(/\n/g,'\\n')}`)
+    fs.writeFileSync(COOKIES_FILE, decoded)
     ytCookies = true
-  } catch (e) { console.error('Failed to write YouTube cookies:', e.message) }
+    console.log(`  cookie file written to ${COOKIES_FILE}`)
+  } catch (e) { console.error('  Failed to write YouTube cookies:', e.message) }
+} else {
+  console.log('  YOUTUBE_COOKIES_B64 env var not found')
 }
 
 // ── Stripe (optional — configure via server/.env) ────────────────────────────
